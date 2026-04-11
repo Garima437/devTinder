@@ -128,7 +128,7 @@ const server = http.createServer(app); // 4. Essential for WebSockets
 //   credentials: true
 // }));
 app.use(cors({
-  origin: ["http://localhost:5173", "http://13.60.253.32"],
+  origin: ["http://localhost:5173", "http://13.60.253.32","http://13.60.253.32:80"],
   credentials: true
 }));
 app.use(express.json());
@@ -140,16 +140,16 @@ const profileRouter = require("./routes/profile");
 const requestRouter = require("./routes/request");
 const userRouter = require("./routes/user");
 
-// app.use("/", authRouter);
-// app.use("/", profileRouter);
-// app.use("/request", requestRouter);
-// app.use("/user", userRouter);
-
-app.use("/api", authRouter);
 app.use("/", authRouter);
-app.use("/api", profileRouter);
-app.use("/api/request", requestRouter);
-app.use("/api/user", userRouter);
+app.use("/", profileRouter);
+app.use("/request", requestRouter);
+app.use("/user", userRouter);
+
+// app.use("/api", authRouter);
+// app.use("/", authRouter);
+// app.use("/api", profileRouter);
+// app.use("/api/request", requestRouter);
+// app.use("/api/user", userRouter);
 // 5. Initialize the Socket logic
 initializeSocket(server);
 
