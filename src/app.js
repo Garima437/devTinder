@@ -144,7 +144,9 @@ const userRouter = require("./routes/user");
 // app.use("/", profileRouter);
 // app.use("/request", requestRouter);
 // app.use("/user", userRouter);
+
 app.use("/api", authRouter);
+app.use("/", authRouter);
 app.use("/api", profileRouter);
 app.use("/api/request", requestRouter);
 app.use("/api/user", userRouter);
