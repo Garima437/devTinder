@@ -1,125 +1,129 @@
 
+
+
+
+
 const express = require("express");
 const userRouter = express.Router();
-
 const { userAuth } = require("../middlewares/auth");
 const ConnectionRequest = require("../models/connectionRequest");
-console.log("Request router loaded");
 const User = require("../models/user");
+const Message = require("../models/message"); // ✅ Added Message Model
 
-const USER_SAFE_DATA = "firstName lastName photoUrl age gender about skills"
-//  Get all received pending requests
-userRouter.get(
-  "/requests/received",
-  userAuth,
-  async (req, res) => {
+const USER_SAFE_DATA = "firstName lastName photoUrl age gender about skills";
+
+// 1. Get Received Requests
+userRouter.get("/received", userAuth, async (req, res) => {
     try {
-      const loggedInUserId = req.user._id;
-
-      const connectionRequests = await ConnectionRequest.find({
-        toUserId: loggedInUserId,
-        status: "interested",
-      })
-        .populate(
-          "fromUserId",
-          "firstName lastName photo age gender about skills"
-        )
+        const loggedInUser = req.user;
+        const connectionRequests = await ConnectionRequest.find({
+            toUserId: loggedInUser._id,
+            status: "interested",
+        })
+        .populate("fromUserId", USER_SAFE_DATA)
         .sort({ createdAt: -1 });
 
-      res.status(200).json({
-        message: "Requests fetched successfully",
-        count: connectionRequests.length,
-        data: connectionRequests,
-      });
+        res.status(200).json({
+            message: "Requests fetched successfully",
+            data: connectionRequests,
+        });
     } catch (err) {
-      console.error(err);
-      res.status(500).json({
-        message: "Server error",
-      });
+        res.status(500).json({ message: "Server error" });
     }
-  }
-);
-
-
-// get connections who is accept my req
-
-userRouter.get("/connections", userAuth, async (req, res) => {
-  try {
-    const loggedInUser = req.user;
-
-    const connectionRequests = await ConnectionRequest.find({
-      $or: [
-        { toUserId: loggedInUser._id, status: "accepted" },
-        { fromUserId: loggedInUser._id, status: "accepted" },
-      ],
-    })
-      .populate("fromUserId", USER_SAFE_DATA)
-      .populate("toUserId", USER_SAFE_DATA);
-
-    const data = connectionRequests.map((row) => {
-      if (row.fromUserId._id.toString() === loggedInUser._id.toString()) {
-        return row.toUserId;
-      }
-      return row.fromUserId;
-    });
-
-    res.json({ data });
-  } catch (err) {
-    res.status(400).send({ message: err.message });
-  }
 });
 
+// 2. Get All Connections (Matches)
+userRouter.get("/connections", userAuth, async (req, res) => {
+    try {
+        const loggedInUser = req.user;
 
-// feed in devTinder
+        const connectionRequests = await ConnectionRequest.find({
+            $or: [
+                { toUserId: loggedInUser._id, status: "accepted" },
+                { fromUserId: loggedInUser._id, status: "accepted" },
+            ],
+        })
+        .populate("fromUserId", USER_SAFE_DATA)
+        .populate("toUserId", USER_SAFE_DATA);
 
+        const data = connectionRequests.map((row) => {
+            if (row.fromUserId._id.toString() === loggedInUser._id.toString()) {
+                return row.toUserId;
+            }
+            return row.fromUserId;
+        });
 
+        res.json({ data });
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+
+// 3. The Feed (Users you haven't interacted with)
 userRouter.get("/feed", userAuth, async (req, res) => {
-  try {
-    const loggedInUser = req.user;
-    const page = parseInt(req.query.page) || 0;
-    const limit = 10;
+    try {
+        const loggedInUser = req.user;
+        const page = parseInt(req.query.page) || 0;
+        const limit = 10;
 
-    // Step 1: Get users to exclude
-    const connections = await ConnectionRequest.find({
-      $or: [
-        { fromUserId: loggedInUser._id },
-        { toUserId: loggedInUser._id }
-      ]
-    }).select("fromUserId toUserId");
+        const connectionRequests = await ConnectionRequest.find({
+            $or: [{ fromUserId: loggedInUser._id }, { toUserId: loggedInUser._id }],
+        }).select("fromUserId toUserId");
 
-    const swipes = await Swipe.find({
-      fromUserId: loggedInUser._id
-    }).select("toUserId");
+        const excludeUserIds = new Set();
+        excludeUserIds.add(loggedInUser._id.toString());
 
-    let excludeUserIds = new Set();
+        connectionRequests.forEach((req) => {
+            excludeUserIds.add(req.fromUserId.toString());
+            excludeUserIds.add(req.toUserId.toString());
+        });
 
-    connections.forEach((c) => {
-      excludeUserIds.add(c.fromUserId.toString());
-      excludeUserIds.add(c.toUserId.toString());
-    });
+        const users = await User.find({
+            _id: { $nin: Array.from(excludeUserIds) },
+        })
+        .select(USER_SAFE_DATA)
+        .skip(page * limit)
+        .limit(limit);
 
-    swipes.forEach((s) => {
-      excludeUserIds.add(s.toUserId.toString());
-    });
+        res.status(200).json({ data: users });
+    } catch (err) {
+        res.status(500).json({ message: "Failed to load feed" });
+    }
+});
 
-    excludeUserIds.add(loggedInUser._id.toString());
+// 4. Chat History Route ✅ ADDED
+userRouter.get("/chat/:connectionId", userAuth, async (req, res) => {
+    try {
+        const { connectionId } = req.params;
 
-    // Step 2: Fetch feed users
-    const users = await User.find({
-      _id: { $nin: Array.from(excludeUserIds) },
-      isActive: true
-    })
-      .select(USER_SAFE_DATA)
-      .limit(limit)
-      .skip(page * limit)
-      .lean(); // important for performance
+        // Fetch messages belonging to this connection
+        const messages = await Message.find({ connectionId })
+            .sort({ createdAt: 1 }); // Oldest first to newest at bottom
 
-    res.status(200).json(users);
+        res.status(200).json({ data: messages });
+    } catch (err) {
+        res.status(500).json({ message: "Error fetching history" });
+    }
+});
 
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to load feed" });
-  }
+// 5. Roommate Matches (Based on habits)
+userRouter.get("/matches", userAuth, async (req, res) => {
+    try {
+        const loggedInUser = req.user;
+
+        const matches = await User.find({
+            _id: { $ne: loggedInUser._id },
+            gender: loggedInUser.gender,
+            $and: [
+                { sleepHabit: loggedInUser.sleepHabit },
+                { foodPreference: loggedInUser.foodPreference }
+            ]
+        }).select("firstName lastName photoUrl sleepHabit foodPreference cleanliness");
+
+        res.json({ data: matches });
+    } catch (err) {
+        res.status(400).json({ message: "Error fetching matches: " + err.message });
+    }
 });
 
 module.exports = userRouter;

@@ -114,7 +114,40 @@ requestRouter.post(
     }
   }
 );
+// GET all received connection requests for the logged-in user
+requestRouter.get("/received", userAuth, async (req, res) => {
+  try {
+    const loggedInUser = req.user;
+
+    // Find requests sent TO the logged-in user with status "interested"
+    const connectionRequests = await ConnectionRequest.find({
+      toUserId: loggedInUser._id,
+      status: "interested",
+    }).populate("fromUserId", "firstName lastName photoUrl age gender about skills");
+    // ^ Use 'photoUrl' or 'photo' based on what your model uses!
+
+    res.json({
+      message: "Requests fetched successfully",
+      data: connectionRequests,
+    });
+  } catch (err) {
+    res.status(400).send("ERROR: " + err.message);
+  }
+});
 
 
+requestRouter.delete("/unmatch/:connectionId", userAuth, async (req, res) => {
+  const { connectionId } = req.params;
+
+  // Delete the connection
+  await ConnectionRequest.findByIdAndDelete(connectionId);
+
+  // Delete all messages of this match
+  await Message.deleteMany({ connectionId });
+
+  res.json({ message: "Unmatched successfully" });
+});
 
 module.exports = requestRouter;
+
+

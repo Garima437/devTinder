@@ -8,7 +8,7 @@ const userAuth = async (req, res, next) => {
       req.header("Authorization")?.replace("Bearer ", "");
 
     if (!token) {
-      return res.status(401).json({ message: "Token missing" });
+      return res.status(401).json({ message: "Please Login!!" });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
