@@ -174,24 +174,21 @@ const validateSignUpData = (req) => {
 /* ========= EDIT PROFILE VALIDATION (PATCH) ========= */
 const validateEditProfileData = (req) => {
   const allowedUpdates = [
-    "firstName",
-    "lastName",
-    "gender",
-    "skills",
-    "about",
-    "photoUrl", // 🛠️ FIXED: Changed from 'photo' to 'photoUrl'
-    "photos",   // 🛠️ Allowed the array of 6 photos
-    "age",
+    "firstName", "lastName", "gender", "skills", "about", "photoUrl", "photos", "age",
   ];
 
   const updates = Object.keys(req.body);
 
-  // Email & Password cannot be edited via this route
+  // 1. Explicitly Block Sensitive Fields
   if (updates.includes("emailId") || updates.includes("password")) {
     throw new Error("Email or password cannot be edited via profile update");
   }
 
-  const isValidOperation = updates.every((key) =>
+  // 2. Filter out internal MongoDB/Mongoose fields if they sneak in
+  const filteredUpdates = updates.filter(key => !["_id", "createdAt", "updatedAt", "__v"].includes(key));
+
+  // 3. Check if the remaining fields are allowed
+  const isValidOperation = filteredUpdates.every((key) =>
     allowedUpdates.includes(key)
   );
 
@@ -199,9 +196,13 @@ const validateEditProfileData = (req) => {
     throw new Error("Invalid profile update fields");
   }
 
-  // 🛠️ Extra logic: If photoUrl is being updated, validate the URL
+  // 4. Validate Specific Field formats if present
   if (req.body.photoUrl && !validator.isURL(req.body.photoUrl)) {
     throw new Error("Invalid Photo URL");
+  }
+
+  if (req.body.age && (req.body.age < 18 || req.body.age > 60)) {
+    throw new Error("Age must be between 18 and 60");
   }
 };
 

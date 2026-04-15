@@ -107,32 +107,99 @@
 //   });
 
 
+// require("dotenv").config();
+// const express = require("express");
+// const cors = require("cors");
+// const cookieParser = require("cookie-parser");
+// const http = require("http"); // 1. Import HTTP module
+// const { Server } = require("socket.io"); // 2. Import Socket.io
+// const connectDB = require("./config/database");
+// const initializeSocket = require("../utils/socket"); // 3. Import your socket utility
+
+// const app = express();
+// const port = process.env.PORT || 3000;
+
+// // Create the HTTP server wrapping the express app
+// const server = http.createServer(app); // 4. Essential for WebSockets
+
+// /* ================= MIDDLEWARES ================= */
+// // app.use(cors({
+// //   origin: "http://localhost:5173",
+// //   credentials: true
+// // }));
+// app.use(cors({
+//   origin: ["http://localhost:5173", "http://13.60.253.32","http://13.60.253.32:80"],
+//   credentials: true
+// }));
+// app.use(express.json());
+// app.use(cookieParser());
+
+// /* ================= ROUTERS ================= */
+// const authRouter = require("./routes/auth");
+// const profileRouter = require("./routes/profile");
+// const requestRouter = require("./routes/request");
+// const userRouter = require("./routes/user");
+
+// app.use("/", authRouter);
+// app.use("/", profileRouter);
+// app.use("/request", requestRouter);
+// app.use("/user", userRouter);
+
+// // app.use("/api", authRouter);
+// // app.use("/", authRouter);
+// // app.use("/api", profileRouter);
+// // app.use("/api/request", requestRouter);
+// // app.use("/api/user", userRouter);
+// // 5. Initialize the Socket logic
+// initializeSocket(server);
+
+// /* ================= GLOBAL ERROR HANDLER ================= */
+// app.use((err, req, res, next) => {
+//   res.status(500).json({ message: err.message || "Internal Server Error" });
+// });
+
+// /* ================= DB + SERVER START ================= */
+// connectDB()
+//   .then(() => {
+//     console.log("✅ Database connection established...");
+//     // 6. IMPORTANT: Use server.listen, NOT app.listen
+//     server.listen(port, () => {
+//       console.log(`🚀 Server running on port ${port}`);
+//     });
+//   })
+//   .catch((err) => {
+//     console.error("❌ DATABASE CONNECTION ERROR:", err);
+//     process.exit(1);
+//   });
+
+
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
-const http = require("http"); // 1. Import HTTP module
-const { Server } = require("socket.io"); // 2. Import Socket.io
+const http = require("http");
 const connectDB = require("./config/database");
-const initializeSocket = require("../utils/socket"); // 3. Import your socket utility
+const initializeSocket = require("../utils/socket"); // Double check this path!
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Create the HTTP server wrapping the express app
-const server = http.createServer(app); // 4. Essential for WebSockets
+// Create HTTP server
+const server = http.createServer(app);
 
 /* ================= MIDDLEWARES ================= */
-// app.use(cors({
-//   origin: "http://localhost:5173",
-//   credentials: true
-// }));
 app.use(cors({
-  origin: ["http://localhost:5173", "http://13.60.253.32","http://13.60.253.32:80"],
+  // Adding the plain IP and the port 3000 (where the API lives)
+  origin: ["http://localhost:5173", "http://13.60.253.32", "http://13.60.253.32:3000"],
+  methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
   credentials: true
 }));
+
 app.use(express.json());
 app.use(cookieParser());
+
+// ✅ ADDED: Serve static files from the public folder (important for Multer)
+app.use("/public", express.static("public"));
 
 /* ================= ROUTERS ================= */
 const authRouter = require("./routes/auth");
@@ -145,16 +212,12 @@ app.use("/", profileRouter);
 app.use("/request", requestRouter);
 app.use("/user", userRouter);
 
-// app.use("/api", authRouter);
-// app.use("/", authRouter);
-// app.use("/api", profileRouter);
-// app.use("/api/request", requestRouter);
-// app.use("/api/user", userRouter);
-// 5. Initialize the Socket logic
+// Initialize Socket.io
 initializeSocket(server);
 
 /* ================= GLOBAL ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
+  console.error("Global Error:", err.stack); // Better for AWS debugging
   res.status(500).json({ message: err.message || "Internal Server Error" });
 });
 
@@ -162,7 +225,6 @@ app.use((err, req, res, next) => {
 connectDB()
   .then(() => {
     console.log("✅ Database connection established...");
-    // 6. IMPORTANT: Use server.listen, NOT app.listen
     server.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
     });
