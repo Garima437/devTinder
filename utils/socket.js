@@ -12,14 +12,26 @@ const initializeSocket = (server) => {
   //     credentials: true,
   //   },
   // });
+  const allowedOrigins = [
+    process.env.CLIENT_URL,
+    process.env.FRONTEND_URL,
+    "http://localhost:5173",
+    "http://13.60.253.32:5173",
+    "http://13.60.253.32:3000"
+  ].filter(Boolean);
+
   const io = new Server(server, {
-  cors: {
-    // Add your AWS IP here
-    origin: ["http://localhost:5173", "http://13.60.253.32"],
-    methods: ["GET", "POST"],
-    credentials: true,
-  },
-});
+    cors: {
+      origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Socket CORS blocked for origin: ${origin}`));
+      },
+      methods: ["GET", "POST"],
+      credentials: true,
+    },
+  });
 
   io.on("connection", (socket) => {
     console.log("⚡ User connected: " + socket.id);

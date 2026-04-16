@@ -93,7 +93,7 @@
 // photoUrl: {
 //   type: String,
 //   trim: true,
-//   default: "https://i.ibb.co/dsB9Zw6C/profil-jpg.png",
+//   default: "https://api.dicebear.com/7.x/avataaars/svg?seed=default",
 //   validate: {
 //       validator: function (value) {
 //           return validator.isURL(value, {

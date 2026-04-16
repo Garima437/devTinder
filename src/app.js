@@ -188,9 +188,21 @@ const port = process.env.PORT || 3000;
 const server = http.createServer(app);
 
 /* ================= MIDDLEWARES ================= */
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://13.60.253.32",
+  "http://13.60.253.32:3000"
+].filter(Boolean);
+
 app.use(cors({
-  // Adding the plain IP and the port 3000 (where the API lives)
-  origin: ["http://localhost:5173", "http://13.60.253.32", "http://13.60.253.32:3000"],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
   credentials: true
 }));
@@ -217,7 +229,7 @@ initializeSocket(server);
 
 /* ================= GLOBAL ERROR HANDLER ================= */
 app.use((err, req, res, next) => {
-  console.error("Global Error:", err.stack); // Better for AWS debugging
+  console.error("Global Error:", err.stack);
   res.status(500).json({ message: err.message || "Internal Server Error" });
 });
 
@@ -225,7 +237,7 @@ app.use((err, req, res, next) => {
 connectDB()
   .then(() => {
     console.log("✅ Database connection established...");
-    server.listen(port, () => {
+    server.listen(port, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${port}`);
     });
   })
