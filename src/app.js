@@ -192,9 +192,10 @@ const allowedOrigins = [
   process.env.CLIENT_URL,
   process.env.FRONTEND_URL,
   "http://localhost:5173",
-  "http://13.60.253.32",
-  "http://13.60.253.32:3000"
+  "http://13.60.253.32", // <-- Add this! This is your Frontend
+  "http://13.60.253.32:3000"   // This is your Backend
 ].filter(Boolean);
+
 
 app.use(cors({
   origin: (origin, callback) => {
