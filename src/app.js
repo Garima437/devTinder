@@ -49,7 +49,8 @@ app.use("/", authRouter);
 app.use("/", profileRouter);
 app.use("/request", requestRouter);
 app.use("/user", userRouter);
-
+const paymentRouter = require("./routes/payment");
+app.use("/api", paymentRouter);
 // Initialize Socket.io
 initializeSocket(server);
 

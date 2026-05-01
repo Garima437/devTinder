@@ -89,6 +89,16 @@ const userSchema = new mongoose.Schema({
             }
         ]
     },
+    membership: {
+  plan: {
+    type: String,
+    enum: ["free", "silver", "gold"],
+    default: "free"
+  },
+  expiryDate: {
+    type: Date
+  }
+},
     gender: {
         type: String,
         required: [true, "Gender is required"],
