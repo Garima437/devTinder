@@ -1,3 +1,4 @@
+const { userAuth } = require("../middlewares/auth");
 const express = require("express");
 const crypto = require("crypto");
 const User = require("../models/user");
@@ -172,4 +173,15 @@ authRouter.post("/reset-password/:token", async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+// Delete Account
+authRouter.delete("/profile/delete", userAuth, async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.user._id);
+    res.cookie("token", "", { expires: new Date(0) });
+    res.json({ message: "Account deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = authRouter;

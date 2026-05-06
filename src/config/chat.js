@@ -1,13 +1,9 @@
-
-
-
 const { Server } = require("socket.io");
-const Message = require("./models/Message"); // Ensure this is imported
+const Message = require("../models/Message");
 
 const initializeSocket = (server) => {
   const io = new Server(server, {
     cors: {
-      // Replace with your AWS IP or use an array to support both local and prod
       origin: ["http://localhost:5173", "http://13.60.253.32"],
       methods: ["GET", "POST"],
       credentials: true
@@ -15,38 +11,34 @@ const initializeSocket = (server) => {
   });
 
   io.on("connection", (socket) => {
-    console.log("User connected: " + socket.id);
+    process.stdout.write("User connected: " + socket.id + "\n");
 
-    // Join a room unique to this match
-    socket.on("joinChat", ({ firstName, userId, connectionId }) => {
+    socket.on("joinChat", (data) => {
+      const { connectionId } = data;
       socket.join(connectionId);
-      console.log(`${firstName} joined room: ${connectionId}`);
+      process.stdout.write("User joined room: " + connectionId + "\n");
     });
 
-    // Send message
-    socket.on("sendMessage", async ({ connectionId, senderId, receiverId, text }) => {
+    socket.on("sendMessage", async (data) => {
+      process.stdout.write("RAW:" + JSON.stringify(data) + "\n");
+      let { connectionId, senderId, receiverId, text } = data;
+      if (!receiverId && connectionId && senderId) {
+        const ids = connectionId.split("_");
+        receiverId = ids[0].toString() === senderId.toString() ? ids[1] : ids[0];
+      }
+      process.stdout.write("DERIVED receiverId:" + receiverId + "\n");
       try {
-        // 1. Save to Database
-        const message = await Message.create({
-            senderId,
-            receiverId,
-            connectionId,
-            text
-        });
-
-        // 2. Emit to the room
-        // Using io.to() ensures everyone in the room (sender + receiver) gets it
+        const message = await Message.create({ senderId, receiverId, connectionId, text });
+        process.stdout.write("SAVED:" + message._id + "\n");
         io.to(connectionId).emit("messageReceived", message);
-
       } catch (err) {
-        console.error("Error saving message:", err);
-        // Optionally: emit an error back to the sender
+        process.stderr.write("FAILED:" + err.message + " DATA:" + JSON.stringify({ senderId, receiverId, connectionId, text }) + "\n");
         socket.emit("error", { msg: "Message could not be sent." });
       }
     });
 
     socket.on("disconnect", () => {
-      console.log("User disconnected");
+      process.stdout.write("User disconnected\n");
     });
   });
 };
