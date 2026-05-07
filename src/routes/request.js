@@ -52,19 +52,6 @@ requestRouter.post("/send/:status/:toUserId", userAuth, async (req, res) => {
 
 await ConnectionRequest.create({ fromUserId, toUserId, status });
 
-if (status === "interested") {
-  try {
-    const toUser = await User.findById(toUserId).select("firstName emailId");
-    const fromUser = await User.findById(fromUserId).select("firstName"); 
-    await sendConnectionRequestEmail({
-      toEmail: toUser.emailId,
-      toName: toUser.firstName,
-      fromName: fromUser.firstName,
-    });
-  } catch (emailErr) {
-    console.error("Email notification failed:", emailErr.message);
-  }
-}
 
 res.json({
   message: status === "interested" ? "Request sent" : "User ignored"

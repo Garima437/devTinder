@@ -5,7 +5,7 @@ const ConnectionRequest = require("../models/connectionRequest");
 const User = require("../models/user");
 const Message = require("../models/message");
 
-const USER_SAFE_DATA = "firstName lastName photoUrl age gender about skills";
+const USER_SAFE_DATA = "firstName lastName photoUrl age gender about skills membership";
 
 /* ================= 1. GET RECEIVED REQUESTS ================= */
 userRouter.get("/received", userAuth, async (req, res) => {
@@ -88,6 +88,22 @@ userRouter.get("/feed", userAuth, async (req, res) => {
         res.status(500).json({ message: "Failed to load feed" });
     }
 });
+// Get any user's profile by ID
+userRouter.get("/profile/:userId", userAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId)
+      .select("firstName lastName photoUrl age gender about skills membership");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ data: user });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+
+
 
 /* ================= 4. CHAT HISTORY ================= */
 userRouter.get("/chat/:connectionId", userAuth, async (req, res) => {
