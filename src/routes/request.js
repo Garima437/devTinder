@@ -3,7 +3,8 @@ const requestRouter = express.Router();
 const { userAuth } = require("../middlewares/auth");
 const ConnectionRequest = require("../models/connectionRequest");
 const Message = require("../models/message"); // ✅ ADD THIS: Needed for unmatch logic
-
+const User = require("../models/user");
+const { sendConnectionRequestEmail } = require("../utils/sendEmail");
 console.log("Request router loaded");
 
 /* ================= SEND REQUEST ================= */
@@ -34,6 +35,7 @@ requestRouter.post("/send/:status/:toUserId", userAuth, async (req, res) => {
       return res.status(400).send("Request already exists");
     }
 
+
     if (status === "interested") {
       const reverse = await ConnectionRequest.findOne({
         fromUserId: toUserId,
@@ -48,11 +50,25 @@ requestRouter.post("/send/:status/:toUserId", userAuth, async (req, res) => {
       }
     }
 
-    await ConnectionRequest.create({ fromUserId, toUserId, status });
-    res.json({
-      message: status === "interested" ? "Request sent" : "User ignored"
-    });
+await ConnectionRequest.create({ fromUserId, toUserId, status });
 
+if (status === "interested") {
+  try {
+    const toUser = await User.findById(toUserId).select("firstName emailId");
+    const fromUser = await User.findById(fromUserId).select("firstName"); 
+    await sendConnectionRequestEmail({
+      toEmail: toUser.emailId,
+      toName: toUser.firstName,
+      fromName: fromUser.firstName,
+    });
+  } catch (emailErr) {
+    console.error("Email notification failed:", emailErr.message);
+  }
+}
+
+res.json({
+  message: status === "interested" ? "Request sent" : "User ignored"
+});
   } catch (err) {
     res.status(500).send("Server error");
   }

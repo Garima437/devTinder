@@ -4,8 +4,8 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const http = require("http");
 const connectDB = require("./config/database");
+const { startScheduler } = require("./utils/scheduler");
 const initializeSocket = require("../utils/socket"); // Double check this path!
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -64,6 +64,7 @@ app.use((err, req, res, next) => {
 connectDB()
   .then(() => {
     console.log("✅ Database connection established...");
+    startScheduler();
     server.listen(port, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${port}`);
     });
