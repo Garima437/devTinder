@@ -115,22 +115,26 @@ requestRouter.get("/received", userAuth, async (req, res) => {
 requestRouter.delete("/unmatch/:connectionId", userAuth, async (req, res) => {
   try {
     const { connectionId } = req.params;
+    const loggedInUser = req.user._id;
 
-    // 1. Delete the connection
-    const deletedConn = await ConnectionRequest.findByIdAndDelete(connectionId);
+    // Find by connection request ID OR by the other user's ID
+    const deletedConn = await ConnectionRequest.findOneAndDelete({
+      $or: [
+        { _id: connectionId },
+        { fromUserId: loggedInUser, toUserId: connectionId, status: "accepted" },
+        { fromUserId: connectionId, toUserId: loggedInUser, status: "accepted" }
+      ]
+    });
 
     if (!deletedConn) {
-        return res.status(404).json({ message: "Connection not found" });
+      return res.status(404).json({ message: "Connection not found" });
     }
 
-    // 2. Delete all messages associated with this match
-    // Ensure 'connectionId' in your Message model is indexed for performance
-    await Message.deleteMany({ connectionId });
+    await Message.deleteMany({ connectionId: deletedConn._id });
 
     res.json({ message: "Unmatched successfully" });
   } catch (err) {
     res.status(500).json({ message: "Could not unmatch user" });
   }
 });
-
 module.exports = requestRouter;

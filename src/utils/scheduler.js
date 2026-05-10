@@ -1,6 +1,6 @@
 const cron = require("node-cron");
 const ConnectionRequest = require("../models/connectionRequest");
-const { sendConnectionRequestEmail } = require("./sendEmail");
+const { sendConnectionRequestEmail, sendPendingRequestsEmail } = require("./sendEmail");
 
 const startScheduler = () => {
   // Runs every day at 8:00 AM IST (2:30 AM UTC)
